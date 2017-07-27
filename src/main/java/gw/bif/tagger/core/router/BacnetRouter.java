@@ -3,6 +3,7 @@ package gw.bif.tagger.core.router;
 import java.util.Map;
 
 import org.apache.camel.Exchange;
+import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.dataformat.JsonLibrary;
@@ -10,7 +11,6 @@ import org.apache.camel.model.language.SimpleExpression;
 import org.apache.camel.processor.aggregate.AggregationStrategy;
 import org.apache.commons.logging.Log;
 import org.apache.commons.logging.LogFactory;
-import org.slf4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
@@ -22,24 +22,21 @@ public class BacnetRouter extends RouteBuilder {
 	@Autowired
 	ProducerTemplate producerTemplate;
 
+	@Autowired
+	AggregationStrategy aggregationStartegy;
+
 	@Override
 	public void configure() throws Exception {
 		from("direct:in")//
-				//.setHeader(Exchange.HTTP_METHOD, constant("POST"))
-				//.setHeader(Exchange.CONTENT_TYPE, constant("application/json"))//
+				.onCompletion()//
+				.process(exchange -> logger.info(exchange.getIn().getBody(String.class)))//
+				.end()//
 				.setBody(new SimpleExpression("${body}"))//
 				.marshal().json(JsonLibrary.Jackson)//
-				.to("http://localhost:8081/bacnet")//
-				.onCompletion().aggregate((Exchange oldExchange, Exchange newExchange) -> {
-
-					logger.info(oldExchange.getIn().getBody());
-					logger.info(oldExchange.getOut().getBody());
-					logger.info(newExchange.getIn().getBody());
-					logger.info(newExchange.getOut().getBody());
-					oldExchange.getIn().setBody(newExchange.getIn().getBody());
-					return oldExchange;
-
-				}).outMessage().completionTimeout(10_000).log("direct:out");
+				.multicast(aggregationStartegy)//
+				//.convertBodyTo(type)
+				.to("http://localhost:8081/bacnet", "http://localhost:8081/modbus")//
+		;
 
 	}
 
