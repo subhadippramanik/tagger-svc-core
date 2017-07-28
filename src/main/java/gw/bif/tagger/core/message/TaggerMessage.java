@@ -13,4 +13,9 @@ public class TaggerMessage {
 		this.tags = tags;
 	}
 
+	@Override
+	public String toString() {
+		return "TaggerMessage [tags=" + tags + "]";
+	}
+
 }

@@ -1,9 +1,12 @@
 package gw.bif.tagger.core.message;
 
+import com.fasterxml.jackson.annotation.JsonCreator;
+
 public class Tag {
 	public String key;
 	public String value;
 
+	@JsonCreator
 	public Tag(String key, String value) {
 		this.key = key;
 		this.value = value;
