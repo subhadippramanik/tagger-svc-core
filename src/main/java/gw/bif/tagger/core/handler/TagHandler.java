@@ -13,7 +13,7 @@ public class TagHandler {
 	@Autowired BacnetRouter bacnetRotuer;
 
 	public Map<String, String> handle(Map<String, String> message) {
-		return bacnetRotuer.rout(message);
+		return bacnetRotuer.route(message);
 	}
 
 }
