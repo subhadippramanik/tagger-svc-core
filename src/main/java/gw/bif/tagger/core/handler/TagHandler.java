@@ -5,12 +5,12 @@ import java.util.Map;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
-import gw.bif.tagger.core.router.BacnetRouter;
+import gw.bif.tagger.core.router.DefaultRouter;
 
 @Component
 public class TagHandler {
 	
-	@Autowired BacnetRouter bacnetRotuer;
+	@Autowired DefaultRouter bacnetRotuer;
 
 	public Map<String, String> handle(Map<String, String> message) {
 		return bacnetRotuer.route(message);
