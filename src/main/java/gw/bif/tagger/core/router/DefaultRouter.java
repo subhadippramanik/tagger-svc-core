@@ -1,20 +1,13 @@
 package gw.bif.tagger.core.router;
 
-import java.util.HashMap;
 import java.util.Map;
 
 import javax.inject.Inject;
 
-import org.apache.camel.Exchange;
-import org.apache.camel.Processor;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.dataformat.JsonLibrary;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
-
-import com.google.common.collect.Iterables;
 
 import gw.bif.tagger.core.aggregator.DefaultAggregationStrategy;
 
@@ -29,45 +22,36 @@ public class DefaultRouter extends RouteBuilder {
 
 	private final AttributeMapSplitter attributeMapSplitter;
 
+	private NameSpaceAttributeSplitProcessor nameSpaceAttributeProcessor;
+	
+	private CallbackProcessor callbackProcessor;
+	
+	private NamespacePropertyProcessor namespacePropertyProcessor;
+
 	@Inject
 	public DefaultRouter(ProducerTemplate producerTemplate, DefaultAggregationStrategy aggregationStrategy,
-			NamespaceRouter namespaceRouter, AttributeMapSplitter attributeMapSplitter) {
+			NamespaceRouter namespaceRouter, AttributeMapSplitter attributeMapSplitter,
+			NameSpaceAttributeSplitProcessor nameSpaceAttributeProcessor, CallbackProcessor callbackProcessor,
+			NamespacePropertyProcessor namespacePropertyProcessor) {
 		this.producerTemplate = producerTemplate;
 		this.aggregationStrategy = aggregationStrategy;
 		this.namespaceRouter = namespaceRouter;
 		this.attributeMapSplitter = attributeMapSplitter;
+		this.nameSpaceAttributeProcessor = nameSpaceAttributeProcessor;
+		this.callbackProcessor = callbackProcessor;
+		this.namespacePropertyProcessor = namespacePropertyProcessor;
 	}
 
 	@Override
 	public void configure() throws Exception {
 		from("direct:in")//
-				.process(new Processor() {
-					@Override
-					public void process(Exchange exchange) throws Exception {
-						Map<String, String> rawAttributes = exchange.getIn().getBody(Map.class);
-						Map<String, Map<String, String>> namespaceAttributesMap = new HashMap<>();
-						rawAttributes.entrySet().stream().forEach((entry) -> {
-							String[] namespaceAndProperty = entry.getKey().split(":");
-							String namespace = namespaceAndProperty[0];
-							Map<String, String> existingMappings = namespaceAttributesMap.getOrDefault(namespace,
-									new HashMap<>());
-							existingMappings.put(entry.getKey(), entry.getValue());
-							namespaceAttributesMap.put(namespace, existingMappings);
-						});
-						exchange.getIn().setBody(namespaceAttributesMap);
-					}
-				})//
+				.onCompletion().process(callbackProcessor).end()//
+				.process(nameSpaceAttributeProcessor)//
 				.split()//
 				.method(attributeMapSplitter, "split")//
 				.aggregationStrategy(aggregationStrategy)//
 				.parallelProcessing()//
-				.process((exchange) -> {
-					Map<String, Map<String, String>> spilittedMessage = (Map<String, Map<String, String>>) exchange
-							.getIn().getBody(Map.class);
-					exchange.getOut().setBody(Iterables.getOnlyElement(spilittedMessage.values()), Map.class);
-					exchange.getOut().setHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON);
-					exchange.setProperty("namespace", Iterables.getOnlyElement(spilittedMessage.keySet()));
-				})//
+				.process(namespacePropertyProcessor)//
 				.marshal()//
 				.json(JsonLibrary.Jackson)//
 				.dynamicRouter()//
@@ -80,9 +64,8 @@ public class DefaultRouter extends RouteBuilder {
 
 	}
 
-	public Map<String, String> route(Map<String, String> message) {
+	public void route(Map<String, Object> message) {
 		producerTemplate.sendBody("direct:in", message);
-		return message;
 	}
 
 }

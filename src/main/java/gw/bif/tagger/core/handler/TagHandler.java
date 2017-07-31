@@ -14,8 +14,8 @@ public class TagHandler {
 	@Inject
 	private DefaultRouter bacnetRotuer;
 
-	public Map<String, String> handle(Map<String, String> message) {
-		return bacnetRotuer.route(message);
+	public void handle(Map<String, Object> message) {
+		bacnetRotuer.route(message);
 	}
 
 }
