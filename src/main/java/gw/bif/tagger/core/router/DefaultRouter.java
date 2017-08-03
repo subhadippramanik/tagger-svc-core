@@ -4,9 +4,11 @@ import java.util.Map;
 
 import javax.inject.Inject;
 
+import org.apache.camel.CamelContext;
 import org.apache.camel.ProducerTemplate;
 import org.apache.camel.builder.RouteBuilder;
 import org.apache.camel.model.dataformat.JsonLibrary;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import gw.bif.tagger.core.aggregator.DefaultAggregationStrategy;
@@ -23,10 +25,13 @@ public class DefaultRouter extends RouteBuilder {
 	private final AttributeMapSplitter attributeMapSplitter;
 
 	private NameSpaceAttributeSplitProcessor nameSpaceAttributeProcessor;
-	
+
 	private CallbackProcessor callbackProcessor;
-	
+
 	private NamespacePropertyProcessor namespacePropertyProcessor;
+
+	@Autowired
+	CamelContext camelContext;
 
 	@Inject
 	public DefaultRouter(ProducerTemplate producerTemplate, DefaultAggregationStrategy aggregationStrategy,
@@ -65,7 +70,7 @@ public class DefaultRouter extends RouteBuilder {
 	}
 
 	public void route(Map<String, Object> message) {
-		producerTemplate.sendBody("direct:in", message);
+		// producerTemplate.sendBody("direct:in", message);
+		producerTemplate.sendBody("activemq:queue:test", message);
 	}
-
 }
